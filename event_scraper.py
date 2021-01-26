@@ -3,6 +3,8 @@ import requests
 import pandas as pd
 from sqlalchemy import create_engine
 import pymysql
+from time import sleep
+import json
 
 ## 1. 기본 스크래핑. 데이터 없음. 이벤트가 새로 열릴 때마다 해야 함
 headers = {'User-agent': 'Mozilla/5.0'}
@@ -12,7 +14,7 @@ url_list = []
 url = "http://www.ufcstats.com/statistics/events/completed?page=all"
 sauce = requests.get(url, headers=headers)
 soup = BeautifulSoup(sauce.text, 'lxml')
-event_list= []
+event_list = []
 date_list = []
 location_list = []
 url_list = []
@@ -20,7 +22,8 @@ for tr in soup.find("tbody").find_all("tr", class_="b-statistics__table-row"):
     try:
         event_list.append(tr.find("a").text.strip())
         date_list.append(tr.find("span").text.strip())
-        location_list.append(tr.find("td", class_="b-statistics__table-col b-statistics__table-col_style_big-top-padding").text.strip())
+        location_list.append(
+            tr.find("td", class_="b-statistics__table-col b-statistics__table-col_style_big-top-padding").text.strip())
         url_list.append(tr.find("a").attrs["href"])
     except AttributeError:
         pass
@@ -55,18 +58,47 @@ if new_rows > 0:
     with engine.connect() as con:
         events_no_url.tail(new_rows).to_sql(con=con, name='events', if_exists='append', index=True)
 
-for fight_url in events_url["url"]:
+fight_list_url = pd.DataFrame(columns=["Fighter", "event_index", "url"])
+fight_list_no_url = pd.DataFrame(columns=["event_index"])
+# for i in range(len(events_url)):
+for i in range(415, len(events_url)):
+    fight_url = events_url["url"][i]
+
+    fight_list = pd.read_html(fight_url)[0]
+    ## 경기 통계가 확정이 안 났으면 Null 이다. 이것은 데이터에서 제외 해야 한다.
+    if fight_list.isnull().values.any():
+        continue
+
+    fight_list = fight_list[["Fighter"]]
+    fight_list["event_index"] = i
+
     sauce = requests.get(fight_url, headers=headers)
     soup = BeautifulSoup(sauce.text, "lxml")
 
     ## 보너스 img 주소
-    bonus = soup.find("div", {"class":"b-statistics__table-preview"}).find_all("img")
+    bonus = soup.find("div", {"class": "b-statistics__table-preview"}).find_all("img")
     bonus_fight = bonus[0].attrs["src"]
     bonus_perf = bonus[1].attrs["src"]
     bonus_sub = bonus[2].attrs["src"]
     bonus_ko = bonus[3].attrs["src"]
 
+    ## 동일한 날짜에 열린 싸움 목록
     tbody = soup.find("tbody")
+
+    fight_stat_url = []
+    ### 각 fight url
     for tr in tbody.find_all("tr"):
-        print(tr.attrs['data-link'])
-    break
+        fight_stat_url.append(tr.attrs['data-link'])
+    fight_list["url"] = fight_stat_url
+
+    ## events_url 과 같은 맥락에서 역순으로 정렬한다.
+    fight_list.sort_index(inplace=True, ascending=False)
+    # events_url.reset_index(drop=True, inplace=True)
+
+    fight_list_url = pd.concat([fight_list_url, fight_list], ignore_index=True)
+    fight_list_no_url = pd.concat([fight_list_no_url, fight_list.drop(["url"], axis=1)], ignore_index=True)
+    print(i, "done out of", len(events_url))
+    sleep(1)
+
+with open("fight_list_url.json", "w") as f:
+    f.write(json.dumps(fight_list_url.to_dict()))
