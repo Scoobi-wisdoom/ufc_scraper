@@ -1,7 +1,7 @@
+import sqlalchemy
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
-from sqlalchemy import create_engine
 import pymysql
 from time import sleep
 import json
@@ -40,11 +40,15 @@ with open("db_name.txt", "r") as f:
     lines = f.readlines()
     pw = lines[0].strip()
     db = lines[1].strip()
-engine = create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".format(user="root", pw=pw, db=db))
+engine = sqlalchemy.create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".format(user="root", pw=pw, db=db))
 
 ## MYSQL 에 데이터를 처음 입력한다.
 # with engine.connect() as con:
-#     events_no_url.to_sql(con=con, name='events', if_exists='replace', index=True)
+#     events_no_url.to_sql(con=con, name='events', if_exists='replace', index=True,
+#                          dtype={None: sqlalchemy.types.INTEGER(),
+#                                 'event': sqlalchemy.types.VARCHAR(length=255),
+#                                 'date': sqlalchemy.types.Date(),
+#                                 'location': sqlalchemy.types.VARCHAR(length=255)})
 #     con.execute('ALTER TABLE `events` ADD PRIMARY KEY (`index`);')
 
 ## MYSQL DB 와 스크래핑 데이터를 비교한다.
@@ -100,5 +104,15 @@ for i in range(415, len(events_url)):
     print(i, "done out of", len(events_url))
     sleep(1)
 
-with open("fight_list_url.json", "w") as f:
-    f.write(json.dumps(fight_list_url.to_dict()))
+# with open("fight_list_url.json", "w") as f:
+#     f.write(json.dumps(fight_list_url.to_dict()))
+with open("fight_list_url.json", "r") as f:
+    json_data = json.loads(f.read())
+
+fight_list_url = pd.DataFrame(json_data)
+fight_list_no_url = fight_list_url.drop(["url", "Fighter"], axis=1)
+
+## MYSQL 에 데이터를 처음 입력한다.
+with engine.connect() as con:
+    fight_list_no_url.to_sql(con=con, name='fights', if_exists='replace', index=True)
+    con.execute('ALTER TABLE `fights` ADD PRIMARY KEY (`index`);')
