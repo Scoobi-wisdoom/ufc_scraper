@@ -50,6 +50,7 @@ engine = sqlalchemy.create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".f
 #                                 'date': sqlalchemy.types.Date(),
 #                                 'location': sqlalchemy.types.VARCHAR(length=255)})
 #     con.execute('ALTER TABLE `events` ADD PRIMARY KEY (`index`);')
+#     con.execute('ALTER TABLE `events` CHANGE `index` `event_id` INT;')
 
 ## MYSQL DB 와 스크래핑 데이터를 비교한다.
 with engine.connect() as con:
@@ -106,13 +107,3 @@ for i in range(415, len(events_url)):
 
 # with open("fight_list_url.json", "w") as f:
 #     f.write(json.dumps(fight_list_url.to_dict()))
-with open("fight_list_url.json", "r") as f:
-    json_data = json.loads(f.read())
-
-fight_list_url = pd.DataFrame(json_data)
-fight_list_no_url = fight_list_url.drop(["url", "Fighter"], axis=1)
-
-## MYSQL 에 데이터를 처음 입력한다.
-with engine.connect() as con:
-    fight_list_no_url.to_sql(con=con, name='fights', if_exists='replace', index=True)
-    con.execute('ALTER TABLE `fights` ADD PRIMARY KEY (`index`);')
