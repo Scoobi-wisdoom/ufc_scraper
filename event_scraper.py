@@ -28,14 +28,29 @@ for tr in soup.find("tbody").find_all("tr", class_="b-statistics__table-row"):
     except AttributeError:
         pass
 
-events_url = pd.DataFrame({"event": event_list, "date": date_list, "location": location_list, "url": url_list})
+events_url = pd.DataFrame({"event_name": event_list, "date": date_list, "location": location_list, "url": url_list})
 events_url["date"] = pd.to_datetime(events_url["date"])
 events_url.sort_index(inplace=True, ascending=False)
 events_url.reset_index(drop=True, inplace=True)
 
 events_no_url = events_url.drop(["url"], axis=1)
 
-# 2. MYSQL 에 연결
+locations = pd.DataFrame(events_no_url[~events_no_url['location'].duplicated(keep='first')]['location'])
+locations.reset_index(drop=True, inplace=True)
+locations.rename(columns={'location': 'location_name'}, inplace=True)
+locations_dict = {}
+for i in range(len(locations)):
+    locations_dict[locations['location_name'][i]] = i
+
+## events_no_url 에 location_id 부여
+location_id = []
+for location in events_no_url['location']:
+    location_id.append(locations_dict[location])
+events_no_url['location_id'] = location_id
+## events_no_url 에서 location 열을 삭제
+events_no_url = events_no_url.drop(['location'], axis=1)
+
+# . MYSQL 에 연결
 with open("db_name.txt", "r") as f:
     lines = f.readlines()
     pw = lines[0].strip()
@@ -43,14 +58,22 @@ with open("db_name.txt", "r") as f:
 engine = sqlalchemy.create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".format(user="root", pw=pw, db=db))
 
 ## MYSQL 에 데이터를 처음 입력한다.
-# with engine.connect() as con:
-#     events_no_url.to_sql(con=con, name='events', if_exists='replace', index=True,
-#                          dtype={None: sqlalchemy.types.INTEGER(),
-#                                 'event': sqlalchemy.types.VARCHAR(length=255),
-#                                 'date': sqlalchemy.types.Date(),
-#                                 'location': sqlalchemy.types.VARCHAR(length=255)})
-#     con.execute('ALTER TABLE `events` ADD PRIMARY KEY (`index`);')
-#     con.execute('ALTER TABLE `events` CHANGE `index` `event_id` INT;')
+with engine.connect() as con:
+    ## location table
+    locations.to_sql(con=con, name='locations', if_exists='replace', index=True,
+                     dtype={None: sqlalchemy.types.INT,
+                            'location_name': sqlalchemy.types.VARCHAR(length=255)})
+    con.execute('ALTER TABLE `locations` ADD PRIMARY KEY (`index`);')
+    con.execute('ALTER TABLE `locations` CHANGE `index` `location_id` INT;')
+    ## events table
+    events_no_url.to_sql(con=con, name='events', if_exists='replace', index=True,
+                         dtype={None: sqlalchemy.types.INTEGER(),
+                                'event_name': sqlalchemy.types.VARCHAR(length=255),
+                                'date': sqlalchemy.types.Date(),
+                                'location_id': sqlalchemy.types.INT})
+    con.execute('ALTER TABLE `events` ADD PRIMARY KEY (`index`);')
+    con.execute('ALTER TABLE `events` CHANGE `index` `event_id` INT;')
+    con.execute('ALTER TABLE `events` ADD FOREIGN KEY (`location_id`) REFERENCES `locations`(`location_id`);')
 
 ## MYSQL DB 와 스크래핑 데이터를 비교한다.
 with engine.connect() as con:
