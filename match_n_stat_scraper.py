@@ -33,6 +33,3 @@ for match_id, fighter, event_id, url in fight_list_url.iloc[5046:,:].itertuples(
     with open(path+ str(event_id) + '_' + str(match_id) +'.html', 'w', encoding='utf-8') as f:
         f.write(str(soup))
     print(match_id, 'is done out of', len(fight_list_url))
-
-# file_soup = BeautifulSoup(open(path+'1.html'), 'html.parser')
-# file_soup.find(class_='b-fight-details__persons clearfix').find(class_='b-fight-details__person').find('a').attrs['href']
