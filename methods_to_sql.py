@@ -40,7 +40,9 @@ test_dict = dict()
 for m in methods['Method']:
     test_dict[m] = set()
 
-for html_file in os.listdir(path=path):
+s = os.listdir(path=path)
+s.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
+for html_file in s:
     start = html_file.find('_')
     end = html_file.find('.')
     match_id = int(html_file[start + 1: end])

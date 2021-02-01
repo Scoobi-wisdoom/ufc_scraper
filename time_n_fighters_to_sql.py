@@ -4,21 +4,25 @@ import pandas as pd
 import pymysql
 import json
 import os
+import string
 
-# . MYSQL 에 연결
+# MYSQL 에 연결
 with open("db_name.txt", "r") as f:
     lines = f.readlines()
     pw = lines[0].strip()
     db = lines[1].strip()
 engine = sqlalchemy.create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".format(user="root", pw=pw, db=db))
 
+# 1. times format 를 DB 에 입력
 # times 를 mysql 에 입력하기 위해서 상세 정보를 봐야 한다.
 ## html 을 저장할 경로 html
 path = 'html/'
 times_list = list()
 
 i = 0
-for html_file in os.listdir(path=path):
+s = os.listdir(path=path)
+s.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
+for html_file in s:
     i += 1
     file_soup = BeautifulSoup(open(path + html_file), 'html.parser')
     b_fight_details = file_soup.find_all('i', class_='b-fight-details__label')
@@ -45,3 +49,10 @@ with engine.connect() as con:
 # file_soup = BeautifulSoup(open(path + '1.html'), 'html.parser')
 # file_soup.find(class_='b-fight-details__persons clearfix').find(class_='b-fight-details__person').find('a').attrs[
 #     'href']
+
+# 2. fighters 정보를 ufcstats.com 에서 스크래핑
+## 기존에 갖고 있던 matches 관련 html 파일에서 각 fighter 의 url 정보를 얻는다.
+
+fighter_path = 'fighter_html/'
+for char in string.ascii_lowercase:
+    url = 'http://www.ufcstats.com/statistics/fighters?char={}&page=all'.format(char)
