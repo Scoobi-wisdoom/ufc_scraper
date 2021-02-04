@@ -35,14 +35,14 @@ for html_file in s:
     times_list = list(dict.fromkeys(times_list))
     print(i, 'out of', len(os.listdir(path=path)))
 
-times = pd.DataFrame({'times_format': times_list})
+times = pd.DataFrame({'time_format': times_list})
 ## MYSQL 에 데이터를 처음 입력한다: Table times
 with engine.connect() as con:
     ## times table
     times.to_sql(con=con, name='times', if_exists='replace', index=True,
                    dtype={
                        None: sqlalchemy.types.INT,
-                       'times_format': sqlalchemy.types.VARCHAR(length=255)
+                       'time_format': sqlalchemy.types.VARCHAR(length=255)
                    }
                 )
     con.execute('ALTER TABLE `times` ADD PRIMARY KEY (`index`);')
@@ -122,7 +122,7 @@ with engine.connect() as con:
     con.execute('ALTER TABLE `results` ADD PRIMARY KEY (`index`);')
     con.execute('ALTER TABLE `results` CHANGE `index` `result_id` INT;')
 
-# 4. fighter_url 을 이용해 fighters Table 을 SQL 에 입력한다.
+# 4. fighter_url 을 이용해 fighters Table 을 만들 pandas DataFrame 을 만들고 저장한다.
 with open('fighter_url.json', 'r') as f:
     json_data = json.loads(f.read())
     fighter_url = pd.DataFrame(json_data)
@@ -286,3 +286,40 @@ fighters_df[['record_str_acc', 'record_str_def', 'record_td_acc', 'record_td_def
     fighters_df[['record_str_acc', 'record_str_def', 'record_td_acc', 'record_td_def']].apply(lambda x: x.str.strip('%')).apply(pd.to_numeric) / 100
 
 fighters_df.to_json('fighter_to_sql.json')
+
+# 4. pandas DataFrame 을 이용해 MYSQL 에 fighters Table 을 만들고 저장한다.
+fighters_df = pd.read_json('fighter_to_sql.json')
+fighters_df['dob'] = pd.to_datetime(fighters_df['dob'])
+
+## MYSQL 에 데이터를 처음 입력한다: Table fighters
+with engine.connect() as con:
+    ## fighters table
+    fighters_df.to_sql(con=con, name='fighters', if_exists='replace', index=True,
+                       dtype={
+                           None: sqlalchemy.types.INT,
+                           'fighter_name': sqlalchemy.types.VARCHAR(length=255),
+                           'fighter_nickname': sqlalchemy.types.VARCHAR(length=255),
+                            ### metric
+                           'height': sqlalchemy.types.DECIMAL(precision=7, scale=4, asdecimal=True),
+                            ### lbs
+                            'weight': sqlalchemy.types.DECIMAL(precision=5, scale=2, asdecimal=True),
+                            ### metric
+                            'reach': sqlalchemy.types.DECIMAL(precision=7, scale=4, asdecimal=True),
+                            'stance': sqlalchemy.types.VARCHAR(length=255),
+                            'dob': sqlalchemy.types.Date(),
+                            'record_win': sqlalchemy.types.INT,
+                            'record_loss': sqlalchemy.types.INT,
+                            'record_draw': sqlalchemy.types.INT,
+                            'record_nc': sqlalchemy.types.INT,
+                            'record_sl_pm': sqlalchemy.types.DECIMAL(precision=7, scale=4, asdecimal=True),
+                            'record_str_acc': sqlalchemy.types.DECIMAL(precision=5, scale=4, asdecimal=True),
+                            'record_sa_pm': sqlalchemy.types.DECIMAL(precision=7, scale=4, asdecimal=True),
+                            'record_str_def': sqlalchemy.types.DECIMAL(precision=5, scale=4, asdecimal=True),
+                            'record_td_avg': sqlalchemy.types.DECIMAL(precision=7, scale=4, asdecimal=True),
+                            'record_td_acc': sqlalchemy.types.DECIMAL(precision=5, scale=4, asdecimal=True),
+                            'record_td_def': sqlalchemy.types.DECIMAL(precision=5, scale=4, asdecimal=True),
+                            'record_sub_avg': sqlalchemy.types.DECIMAL(precision=7, scale=4, asdecimal=True),
+                       }
+                       )
+    con.execute('ALTER TABLE `fighters` ADD PRIMARY KEY (`index`);')
+    con.execute('ALTER TABLE `fighters` CHANGE `index` `fighter_id` INT;')

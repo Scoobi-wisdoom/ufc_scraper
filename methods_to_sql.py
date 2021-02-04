@@ -13,15 +13,6 @@ with open("db_name.txt", "r") as f:
     db = lines[1].strip()
 engine = sqlalchemy.create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".format(user="root", pw=pw, db=db))
 
-# 3. MYSQL 에 데이터를 처음 입력한다.
-# with engine.connect() as con:
-#     fight_list_no_url.to_sql(con=con, name='fights', if_exists='replace', index=True,
-#                              dtype={None: sqlalchemy.types.INTEGER,
-#                                     'event_index': sqlalchemy.types.Integer})
-#     con.execute('ALTER TABLE `fights` ADD PRIMARY KEY (`index`);')
-#     con.execute('ALTER TABLE `fights` ADD FOREIGN KEY (`event_index`) REFERENCES `events`(`index`);')
-
-
 
 # 데이터 불러오기
 with open('fight_list_url.json', 'r') as f:
