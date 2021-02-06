@@ -27,19 +27,20 @@ for html in s:
     title_n_bonus = list(dict.fromkeys(title_n_bonus))
     print(html)
 
-chance_name = ['belt', 'fight', 'sub', 'ko', 'perf']
+title_n_bonus = [''] + title_n_bonus
+chance_name = ['', 'belt', 'fight', 'sub', 'ko', 'perf']
 chances = pd.DataFrame()
-chances['chance_id'] = range(len(title_n_bonus))
-chances['chance_name'] = chance_name
-chances['chance_url'] = title_n_bonus
+chances['achieve_id'] = range(len(title_n_bonus))
+chances['achieve_name'] = chance_name
+chances['achieve_url'] = title_n_bonus
 
 ## MYSQL 에 데이터를 처음 입력한다: Table methods
 with engine.connect() as con:
-    chances.to_sql(con=con, name='chances', if_exists='replace', index=False,
+    chances.to_sql(con=con, name='achieves', if_exists='replace', index=False,
                      dtype={
-                            'chance_id': sqlalchemy.types.INT,
-                            'chance_name': sqlalchemy.types.VARCHAR(length=255),
-                            'chance_url': sqlalchemy.types.VARCHAR(length=2000)
+                            'achieve_id': sqlalchemy.types.INT,
+                            'achieve_name': sqlalchemy.types.VARCHAR(length=255),
+                            'achieve_url': sqlalchemy.types.VARCHAR(length=2000)
                             }
                    )
-    con.execute('ALTER TABLE `chances` ADD PRIMARY KEY (`chance_id`);')
+    con.execute('ALTER TABLE `achieves` ADD PRIMARY KEY (`achieve_id`);')
