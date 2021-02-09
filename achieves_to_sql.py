@@ -30,24 +30,17 @@ for html in s:
 title_n_bonus = [''] + title_n_bonus
 chance_name = ['', 'belt', 'fight', 'sub', 'ko', 'perf']
 chances = pd.DataFrame()
+chances['achieve_id'] = range(len(title_n_bonus))
 chances['achieve_name'] = chance_name
 chances['achieve_url'] = title_n_bonus
 
-chances = chances[chances['achieve_name'] != 'belt']
-chances.reset_index(drop=True, inplace=True)
-chances['achieve_id'] = range(len(chances))
-chances = chances[['achieve_id', 'achieve_name', 'achieve_url']]
-
-## 열 이름을 모두 변경한다.
-chances.rename({'achieve_id': 'bonus_id', 'achieve_name': 'bonus_name', 'achieve_url': 'bonus_url'}, axis=1, inplace=True)
-
 ## MYSQL 에 데이터를 처음 입력한다: Table methods
 with engine.connect() as con:
-    chances.to_sql(con=con, name='bonuses', if_exists='replace', index=False,
+    chances.to_sql(con=con, name='achieves', if_exists='replace', index=False,
                      dtype={
-                            'bonus_id': sqlalchemy.types.INT,
-                            'bonus_name': sqlalchemy.types.VARCHAR(length=255),
-                            'bonus_url': sqlalchemy.types.VARCHAR(length=2000)
+                            'achieve_id': sqlalchemy.types.INT,
+                            'achieve_name': sqlalchemy.types.VARCHAR(length=255),
+                            'achieve_url': sqlalchemy.types.VARCHAR(length=2000)
                             }
                    )
-    con.execute('ALTER TABLE `bonuses` ADD PRIMARY KEY (`bonus_id`);')
+    con.execute('ALTER TABLE `achieves` ADD PRIMARY KEY (`achieve_id`);')

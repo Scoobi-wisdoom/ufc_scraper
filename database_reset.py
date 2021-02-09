@@ -1,14 +1,9 @@
-# To reset all databases except rounds Table
+# To reset all databases
 # 데이터를 pandas 로 불러온 후, DB 에 이상이 생기면 그 때 database 에 저장한다.
 import sqlalchemy
 from bs4 import BeautifulSoup
 import pandas as pd
 import pymysql
-import json
-import os
-import requests
-import string
-import re
 
 path = 'database backup/'
 # MYSQL 에 연결
@@ -47,13 +42,25 @@ with engine.connect() as con:
 with engine.connect() as con:
     referees = pd.read_sql_table('referees', con)
 
+## achieves Table 을 MYSQL 에서 불러온다.
+with engine.connect() as con:
+    achieves = pd.read_sql_table('achieves', con)
+
 ## fighters Table 을 MYSQL 에서 불러온다.
 with engine.connect() as con:
     fighters = pd.read_sql_table('fighters', con=con)
 
 ## matches Table 을 MYSQL 에서 불러온다.
 with engine.connect() as con:
-    matches = pd.read_sql_table('matches', con=con)
+    previous_matches = pd.read_sql_table('matches', con=con)
+
+## achievematches Table 을 MYSQL 에서 불러온다.
+with engine.connect() as con:
+    achievematches = pd.read_sql_table('achievematches', con=con)
+
+## rounds Table 을 MYSQL 에서 불러온다.
+with engine.connect() as con:
+    previous_rounds = pd.read_sql_table('rounds', con=con)
 
 # 2. MYSQL 에 데이터를 입력한다.
 ## location table
@@ -129,6 +136,17 @@ with engine.connect() as con:
     con.execute('ALTER TABLE `referees` ADD PRIMARY KEY (`referee_id`);')
     # con.execute('ALTER TABLE `referees` CHANGE `index` `referee_id` INT;')
 
+## achieves Table
+with engine.connect() as con:
+    achieves.to_sql(con=con, name='achieves', if_exists='replace', index=False,
+                     dtype={
+                            'achieve_id': sqlalchemy.types.INT,
+                            'achieve_name': sqlalchemy.types.VARCHAR(length=255),
+                            'achieve_url': sqlalchemy.types.VARCHAR(length=2000)
+                            }
+                   )
+    con.execute('ALTER TABLE `achieves` ADD PRIMARY KEY (`achieve_id`);')
+
 ## fighters table
 with engine.connect() as con:
     fighters.to_sql(con=con, name='fighters', if_exists='replace', index=False,
@@ -164,7 +182,7 @@ with engine.connect() as con:
 
 ## matches table
 with engine.connect() as con:
-    matches.to_sql(con=con, name='matches', if_exists='replace', index=False,
+    previous_matches.to_sql(con=con, name='matches', if_exists='replace', index=False,
                              dtype={'event_id': sqlalchemy.types.Integer,
                                     'match_id': sqlalchemy.types.Integer,
                                     'fighter_red_id': sqlalchemy.types.Integer,
@@ -186,3 +204,33 @@ with engine.connect() as con:
     con.execute('ALTER TABLE `matches` ADD FOREIGN KEY (`method_id`) REFERENCES `methods`(`method_id`);')
     con.execute('ALTER TABLE `matches` ADD FOREIGN KEY (`time_id`) REFERENCES `times`(`time_id`);')
     con.execute('ALTER TABLE `matches` ADD FOREIGN KEY (`referee_id`) REFERENCES `referees`(`referee_id`);')
+
+## achievematches Table
+with engine.connect() as con:
+    achievematches.to_sql(con=con, name='achievematches', if_exists='replace', index=False,
+                     dtype= sqlalchemy.types.INT
+                   )
+    con.execute('ALTER TABLE `achieveMatches` ADD PRIMARY KEY (`match_id`, `achieve_id`);')
+    con.execute('ALTER TABLE `achieveMatches` ADD FOREIGN KEY (`match_id`) REFERENCES `matches`(`match_id`);')
+    con.execute('ALTER TABLE `achieveMatches` ADD FOREIGN KEY (`achieve_id`) REFERENCES `achieves`(`achieve_id`);')
+
+## rounds Table
+with engine.connect() as con:
+    previous_rounds.to_sql(con=con, name='rounds', if_exists='replace', index=False,
+                           dtype= sqlalchemy.types.INT
+                         # dtype={'match_id': sqlalchemy.types.INT, 'fighter_id': sqlalchemy.types.INT,
+                         #        'round_number': sqlalchemy.types.INT, 'TD_landed': sqlalchemy.types.INT,
+                         #        'TD_attempted': sqlalchemy.types.INT, 'SUB_attempted': sqlalchemy.types.INT,
+                         #        'REV': sqlalchemy.types.INT, 'CTRL_sec': sqlalchemy.types.INT,
+                         #        'KD': sqlalchemy.types.INT, 'HEAD_landed': sqlalchemy.types.INT,
+                         #        'HEAD_attempted': sqlalchemy.types.INT, 'BODY_landed': sqlalchemy.types.INT,
+                         #        'BODY_attempted': sqlalchemy.types.INT, 'LEG_landed': sqlalchemy.types.INT,
+                         #        'LEG_attempted': sqlalchemy.types.INT, 'DISTANCE_landed': sqlalchemy.types.INT,
+                         #        'DISTANCE_attempted': sqlalchemy.types.INT, 'CLINCH_landed': sqlalchemy.types.INT,
+                         #        'CLINCH_attempted': sqlalchemy.types.INT, 'GROUND_landed': sqlalchemy.types.INT,
+                         #        'GROUND_attempted': sqlalchemy.types.INT
+                         #        }
+                  )
+    con.execute('ALTER TABLE `rounds` ADD PRIMARY KEY (`match_id`, `fighter_id`, `round_number`);')
+    con.execute('ALTER TABLE `rounds` ADD FOREIGN KEY (`match_id`) REFERENCES `matches`(`match_id`);')
+    con.execute('ALTER TABLE `rounds` ADD FOREIGN KEY (`fighter_id`) REFERENCES `fighters`(`fighter_id`);')

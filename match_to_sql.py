@@ -49,6 +49,10 @@ with engine.connect() as con:
 with engine.connect() as con:
     referees = pd.read_sql_table('referees', con)
 
+## bonuses Table 을 MYSQL 에서 불러온다.
+with engine.connect() as con:
+    bonuses = pd.read_sql_table('bonuses', con)
+
 # 2. matches DataFrame 을 생성한다.
 matches = fighter_url[['event_id', 'match_id']].copy()
 ## fighter_red_id, fighter_blue_id
@@ -77,7 +81,9 @@ for result1, result2 in fighter_url[['defeat_red', 'defeat_blue']].itertuples(in
         result_text = 'NC'
     result_id.append(int(results[results['result_r_b'] == result_text]['result_id']))
 
-## method_id, time_id, referee_id, detail
+## champ, bonus_id, method_id, time_id, referee_id, detail
+champ = []
+bonus_id = []
 time_id = []
 method_id = []
 referee_id = []

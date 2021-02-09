@@ -68,7 +68,7 @@ for html in s:
         each_round = pd.DataFrame(np.asarray(array_totals).transpose(), columns=totals_columns)
         each_round['round_number'] = round_number
         round_totals = pd.concat([round_totals, each_round], ignore_index=True)
-        round_totals.replace(['-', '--', '---'], '0', inplace=True)
+        round_totals.replace(r'^-*$', np.nan, inplace=True, regex=True)
 
     # fighter_id, round_number, TD_landed, TD_attempted, SUB_attempted,
     # REV, CTRL_sec, KD(for strikes)
@@ -77,10 +77,11 @@ for html in s:
     round_totals['TD_attempted'] = round_totals['TD'].copy().apply(lambda x: int(x.split('of')[-1]))
     round_totals['SUB_attempted'] = pd.to_numeric(round_totals['SUB. ATT'])
     round_totals['REV'] = pd.to_numeric(round_totals['REV.'])
-    round_totals['CTRL_sec'] = round_totals['CTRL'].apply(lambda x: int(x.split(':')[0]) * 60 + int(x.split(':')[-1]))
+    round_totals['CTRL_sec'] = round_totals['CTRL'].apply(lambda x: x if type(x) == type(np.nan) else(int(x.split(':')[0]) * 60 + int(x.split(':')[-1])))
     round_totals['KD'] = pd.to_numeric(round_totals['KD'])
 
     round_totals = round_totals[['FIGHTER', 'round_number', 'TD_landed', 'TD_attempted', 'SUB_attempted', 'REV', 'CTRL_sec', 'KD']]
+    # 각 column 의 data type 을 설정한다.
 
     strikes_round = strikes.find('tbody')
     round_number = 0
@@ -97,7 +98,7 @@ for html in s:
         each_round = pd.DataFrame(np.asarray(array_strikes).transpose(), columns=strikes_columns)
         each_round['round_number'] = round_number
         round_strikes = pd.concat([round_strikes, each_round], ignore_index=True)
-        round_strikes.replace(['-', '--', '---'], '0', inplace=True)
+        round_strikes.replace(r'^-*$', np.nan, inplace=True, regex=True)
 
     # fighter_id, round_number, HEAD_landed, HEAD_attempted, BODY_landed,
     # BODY_attempted, LEG_landed, LEG_attempted, DISTANCE_landed, DISTANCE_attempted,
@@ -159,5 +160,3 @@ with engine.connect() as con:
     con.execute('ALTER TABLE `rounds` ADD PRIMARY KEY (`match_id`, `fighter_id`, `round_number`);')
     con.execute('ALTER TABLE `rounds` ADD FOREIGN KEY (`match_id`) REFERENCES `matches`(`match_id`);')
     con.execute('ALTER TABLE `rounds` ADD FOREIGN KEY (`fighter_id`) REFERENCES `fighters`(`fighter_id`);')
-
-
